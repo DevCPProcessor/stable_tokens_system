@@ -6,7 +6,7 @@ contract Main {
   uint256 public pausedUntil;
   // Minimum amount of cPRO tokens one must have to call certain functions
   uint256 public minCProAmount;
-  // Portion of fee inside PersonalConversion.sol that goes to oracle
+  // Portion of fee inside PersonalEthConversion.sol that goes to oracle
   uint256 public oraclePercent;
 
   // Oracle account address
@@ -105,7 +105,7 @@ contract Main {
     buybackContractAddress = _buybackContractADdress;
   }
 
-  // Sets the portion of ETH fee inside PersonalConversion.sol that is supposed to go to oracle account
+  // Sets the portion of ETH fee inside PersonalEthConversion.sol that is supposed to go to oracle account
   // Only authorized addresses can call this function
   function setOraclePercent(uint256 _oraclePercent) public onlyAuthorized {
     oraclePercent = _oraclePercent;

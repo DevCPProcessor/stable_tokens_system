@@ -5,7 +5,7 @@ import "./StandardToken.sol";
 import "./Main.sol";
 import "./Supplements.sol";
 
-contract PersonalEthConversion {
+contract PersonalTokenConversion {
 
   //// Main contract address
   address public mainContractAddress;
@@ -49,35 +49,35 @@ contract PersonalEthConversion {
   }
 
   /**
-   *  State of specific ETH collateral.
+   *  State of specific ETH convert.
    */
   struct TokenConvert {
     // Amount of stable tokens minted by sending Eth
     uint256 stableTokens;
     // Amount of Eth sent
-    uint256 collateralTokens;
+    uint256 convertTokens;
   }
 
   /**
-   *  State of specific Stables collateral.
+   *  State of specific Stables convert.
    */
-  struct ConvertCollateral {
-    // Amount of stable tokens locked inside the collateral
+  struct StableConvert {
+    // Amount of stable tokens locked inside the convert
     uint256 stableTokens;
     // Amount of derivative tokens minted for sent stables
     uint256 doesTokens;
     uint256 upesTokens;
   }
 
-  // Mapps addresses to their collateral
+  // Mapps addresses to their convert
   mapping (address => TokenConvert) public tokenConverts;
-  mapping (address => ConvertCollateral) public convertCollaterals;
+  mapping (address => StableConvert) public stableConverts;
 
   /**
    *  Constructor function.
    *  Sets all relevant addresses.
    */
-  function PersonalEthConversion(
+  function PersonalTokenConversion(
     address _mainContractAddress,
     address _supplementsContractAddress,
     address _stableTokenAddress,
@@ -92,27 +92,27 @@ contract PersonalEthConversion {
 
   /**
    *  Exchange Eth for stable tokens at current price.
-   *  Sent Eth is stored as collateral, and stable tokens are minted to msg.sender.
+   *  Sent Eth is stored as convert, and stable tokens are minted to msg.sender.
    */
   function buy(uint256 _amount) public isNotPaused activatedStableToken {
     require(Main(mainContractAddress).activatedStableTokens(stableTokenAddress));
     require(StandardToken(tokenAddress).transferFrom(msg.sender, this, _amount));
     // Takes current price from stable token contract
     uint256 price = StableToken(stableTokenAddress).currentPriceInToken(tokenAddress);
-    // Instantiates collateral mapped to msg.sender
-    TokenConvert tCollateral = tokenConverts[msg.sender];
+    // Instantiates convert mapped to msg.sender
+    TokenConvert tConvert = tokenConverts[msg.sender];
     // Fee equals 0.2% (in Eth)
     uint256 fee = (2 * _amount) / 1000;
-    // Calculates the amount of Eth to store as collateral
+    // Calculates the amount of Eth to store as convert
     uint256 toStore = _amount - fee;
     // Calculates the amount of stable tokens that should be generated
     uint256 amount = toStore / price;
-    tCollateral.stableTokens += amount;
-    tCollateral.collateralTokens += toStore;
+    tConvert.stableTokens += amount;
+    tConvert.convertTokens += toStore;
     totalTokenFee += fee;
     // Interacts with Supplements.sol contract in order to update variables
     // that are used for global supplements calculation
-    Supplements(supplementsContractAddress).increaseTotalCollateralTokens(toStore, tokenAddress);
+    Supplements(supplementsContractAddress).increaseTotalConvertTokens(toStore, tokenAddress);
     // Mints stable tokens
     StableToken(stableTokenAddress).mint(amount, msg.sender);
   }
@@ -122,53 +122,53 @@ contract PersonalEthConversion {
    *  Only stored Eth can be repurchased this way.
    */
   function buybackTokens(uint256 _stablesAmount) public isNotPaused cProRequirement activatedStableToken {
-    // Instantiates collateral mapped to msg.sender
-    TokenConvert tCollateral = tokenConverts[msg.sender];
+    // Instantiates convert mapped to msg.sender
+    TokenConvert tConvert = tokenConverts[msg.sender];
     // Takes current price from stable token contract
     uint256 price = StableToken(stableTokenAddress).currentPriceInToken(tokenAddress);
     // Calculates the maximum amount of stable tokens that can be exchanged for Eth this way
-    uint256 max = tCollateral.collateralTokens / price;
+    uint256 max = tConvert.convertTokens / price;
     require(_stablesAmount <= max);
     // Burns sent stable tokens
     require(StableToken(stableTokenAddress).burnFrom(msg.sender, _stablesAmount));
-    Supplements(supplementsContractAddress).decreaseTotalCollateralTokens(_stablesAmount * price, tokenAddress);
+    Supplements(supplementsContractAddress).decreaseTotalConvertTokens(_stablesAmount * price, tokenAddress);
     // Calculates fee (0.2%)
     uint256 fee = 2 * (_stablesAmount * price) / 1000;
     // Calculates the amount of Eth to send
     uint256 toSend = _stablesAmount * price - fee;
-    // Updates collateral state
-    if (tCollateral.stableTokens <= _stablesAmount) {
-      tCollateral.stableTokens = 0;
+    // Updates convert state
+    if (tConvert.stableTokens <= _stablesAmount) {
+      tConvert.stableTokens = 0;
     }
     else {
-      tCollateral.stableTokens -= _stablesAmount;
+      tConvert.stableTokens -= _stablesAmount;
     }
 
-    tCollateral.collateralTokens -= toSend + fee;
+    tConvert.convertTokens -= toSend + fee;
     // Increases total fee
     totalTokenFee += fee;
     // Sends Eth
     StandardToken(tokenAddress).transfer(msg.sender, toSend);
   }
 
-  // Calculates the amount of non-collateralized stable tokens inside a specific address' collateral
+  // Calculates the amount of non-convertalized stable tokens inside a specific address' convert
   function personalSupplements(address _address) constant returns (uint256) {
     // Takes current price from stable token contract
     uint256 price = StableToken(stableTokenAddress).currentPriceInToken(tokenAddress);
-    // Instantiates collateral mapped to msg.sender
-    TokenConvert tCollateral = tokenConverts[_address];
-    ConvertCollateral convCollateral = convertCollaterals[_address];
+    // Instantiates convert mapped to msg.sender
+    TokenConvert tConvert = tokenConverts[_address];
+    StableConvert convConvert = convertConverts[_address];
 
-    if (tCollateral.stableTokens <= convCollateral.stableTokens) {
+    if (tConvert.stableTokens <= convConvert.stableTokens) {
       return 0;
     }
     else {
-      // Returns 0 if all stable tokens minted by specific token collateral are collateralized
-      if (tCollateral.stableTokens - convCollateral.stableTokens <= (tCollateral.collateralTokens / price)) {
+      // Returns 0 if all stable tokens minted by specific token convert are convertalized
+      if (tConvert.stableTokens - convConvert.stableTokens <= (tConvert.convertTokens / price)) {
         return 0;
       }
       else {
-        return tCollateral.stableTokens - convCollateral.stableTokens - (tCollateral.collateralTokens / price);
+        return tConvert.stableTokens - convConvert.stableTokens - (tConvert.convertTokens / price);
       }
     }
   }
@@ -192,7 +192,7 @@ contract PersonalEthConversion {
   }
 
   /**
-   *  Buy DoES for non-collateralized stable tokens.
+   *  Buy DoES for non-convertalized stable tokens.
    *  Maximum DoES capitalization must be at least 5% lower than capitalization of UpES tokens.
    */
   function buyDoES(uint256 _stablesAmount) public checkForDoES isNotPaused activatedStableToken {
@@ -203,18 +203,18 @@ contract PersonalEthConversion {
     uint256 price = StableToken(stableTokenAddress).currentPriceInDoES();
     uint256 fee = 4 * _stablesAmount / 1000;
     uint256 toSend = (_stablesAmount - fee) * price;
-    // Updates total fee, stables collateral and interacts with Supplements.sol contract
+    // Updates total fee, stables convert and interacts with Supplements.sol contract
     totalStableTokenFee += fee;
-    convertCollaterals[msg.sender].stableTokens += _stablesAmount - fee;
-    convertCollaterals[msg.sender].doesTokens += toSend;
-    Supplements(supplementsContractAddress).increaseTotalStableCollateral(_stablesAmount - fee, stableTokenAddress);
+    convertConverts[msg.sender].stableTokens += _stablesAmount - fee;
+    convertConverts[msg.sender].doesTokens += toSend;
+    Supplements(supplementsContractAddress).increaseTotalStableConvert(_stablesAmount - fee, stableTokenAddress);
     // Mints DoES tokens
     StandardToken(Main(mainContractAddress).doesAddress()).mint(toSend, msg.sender);
 
   }
 
   /**
-   *  Buy UpES for non-collateralized stable tokens.
+   *  Buy UpES for non-convertalized stable tokens.
    *  Maximum UpES capitalization must be at least 5% lower than capitalization of DoES tokens.
    */
   function buyUpES(uint256 _stablesAmount) public checkForUpES isNotPaused activatedStableToken {
@@ -225,11 +225,11 @@ contract PersonalEthConversion {
     uint256 price = StableToken(stableTokenAddress).currentPriceInUpES();
     uint256 fee = 4 * _stablesAmount / 1000;
     uint256 toSend = (_stablesAmount - fee) * price;
-    // Updates total fee, stables collateral and interacts with Supplements.sol contract
+    // Updates total fee, stables convert and interacts with Supplements.sol contract
     totalStableTokenFee += fee;
-    convertCollaterals[msg.sender].stableTokens += _stablesAmount - fee;
-    convertCollaterals[msg.sender].upesTokens += toSend;
-    Supplements(supplementsContractAddress).increaseTotalStableCollateral(_stablesAmount - fee, stableTokenAddress);
+    stableConverts[msg.sender].stableTokens += _stablesAmount - fee;
+    stableConverts[msg.sender].upesTokens += toSend;
+    Supplements(supplementsContractAddress).increaseTotalStableConvert(_stablesAmount - fee, stableTokenAddress);
     // Mints UpES tokens
     StandardToken(Main(mainContractAddress).upesAddress()).mint(toSend, msg.sender);
 
@@ -245,17 +245,17 @@ contract PersonalEthConversion {
     uint256 priceInDoES = StableToken(stableTokenAddress).currentPriceInDoES();
     // Calculates the amount of stable tokens to send, and calculates fee
     uint256 toSend = _doesAmount / priceInDoES;
-    require(toSend <= convertCollaterals[msg.sender].doesTokens);
+    require(toSend <= stableConverts[msg.sender].doesTokens);
     // Burns sent DoES and UpES tokens
     require(StandardToken(Main(mainContractAddress).doesAddress()).burnFrom(msg.sender, _doesAmount));
-    Supplements(supplementsContractAddress).decreaseTotalStableCollateral(toSend, stableTokenAddress);
+    Supplements(supplementsContractAddress).decreaseTotalStableConvert(toSend, stableTokenAddress);
     uint256 fee = 4 * toSend / 1000;
-    // Updates collateral
-    if (convertCollaterals[msg.sender].stableTokens <= toSend - fee) {
-      convertCollaterals[msg.sender].stableTokens = 0;
+    // Updates convert
+    if (stableConverts[msg.sender].stableTokens <= toSend - fee) {
+      stableConverts[msg.sender].stableTokens = 0;
     }
     else {
-      convertCollaterals[msg.sender].stableTokens -= toSend - fee;
+      stableConverts[msg.sender].stableTokens -= toSend - fee;
     }
 
     totalStableTokenFee += fee;
@@ -273,17 +273,17 @@ contract PersonalEthConversion {
     uint256 priceInUpES = StableToken(stableTokenAddress).currentPriceInUpES();
     // Calculates the amount of stable tokens to send, and calculates fee
     uint256 toSend = _upesAmount / priceInUpES;
-    require(toSend <= convertCollaterals[msg.sender].upesTokens);
+    require(toSend <= stableConverts[msg.sender].upesTokens);
     // Burns sent DoES and UpES tokens
     require(StandardToken(Main(mainContractAddress).upesAddress()).burnFrom(msg.sender, _upesAmount));
-    Supplements(supplementsContractAddress).decreaseTotalStableCollateral(toSend, stableTokenAddress);
+    Supplements(supplementsContractAddress).decreaseTotalStableConvert(toSend, stableTokenAddress);
     uint256 fee = 4 * toSend / 1000;
-    // Updates collateral
-    if (convertCollaterals[msg.sender].stableTokens <= toSend - fee) {
-      convertCollaterals[msg.sender].stableTokens = 0;
+    // Updates convert
+    if (stableConverts[msg.sender].stableTokens <= toSend - fee) {
+      stableConverts[msg.sender].stableTokens = 0;
     }
     else {
-      convertCollaterals[msg.sender].stableTokens -= toSend - fee;
+      stableConverts[msg.sender].stableTokens -= toSend - fee;
     }
 
     totalStableTokenFee += fee;
@@ -312,11 +312,11 @@ contract PersonalEthConversion {
 
 
   function tokenConvertsAtAddress(address _address) constant returns (uint256) {
-    return tokenConverts[_address].collateralTokens;
+    return tokenConverts[_address].convertTokens;
   }
 
-  function stablesCollateralAtAddress(address _address) constant returns (uint256) {
-    return convertCollaterals[_address].stableTokens;
+  function stablesConvertAtAddress(address _address) constant returns (uint256) {
+    return stableConverts[_address].stableTokens;
   }
 
   function stablesAtAddress(address _address) constant returns (uint256) {

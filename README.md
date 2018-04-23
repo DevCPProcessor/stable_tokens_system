@@ -1,7 +1,6 @@
+# README v0.1 / 2018.03.19.
 
-# ETHEREUM STABLE TOKENS by CP PROCESSOR
-
-# README v1.0 / 2018.03.19.
+# ETHEREUM STABLE TOKENS SYSTEM 
 
 # Introduction
 StableToken.sol is the contract that generates stable tokens through its function `mint`.  
@@ -9,10 +8,10 @@ That function can be triggered only by "mintAuthorized" contracts (addresses), w
 Calculation of the amount of stable tokens that should be generated is based on the price of stable token in Eth or in other tokens which is provided by a centralized oracle service.  
 
 Stable tokens can be bought in two ways:  
-1. By sending ETH to PersonalConversion.sol contract, which calls `mint` function from StableToken.sol that sends the equivalent amount of stable tokens to sender's address.  
-2. By sending (listed) ERC20 tokens to specific token's PersonalTokenConversion.sol contract that works the same as PersonalConversion.sol, but only with specific listed token.  
+1. By sending ETH to PersonalEthConversion.sol contract, which calls `mint` function from StableToken.sol that sends the equivalent amount of stable tokens to sender's address.  
+2. By sending (listed) ERC20 tokens to specific token's PersonalTokenConversion.sol contract that works the same as PersonalEthConversion.sol, but only with specific listed token.  
 
-DoES and UpES tokens can be bought through each of PersonalConversion.sol or PersonalTokenConversion.sol contracts. Their price is updated within StableToken.sol contract each time
+DoES and UpES tokens can be bought through each of PersonalEthConversion.sol or PersonalTokenConversion.sol contracts. Their price is updated within StableToken.sol contract each time
 ETH price is updated.  
 
 StandardToken.sol is the contract that generates DoES or UpES tokens. It should be deployed twice for each token.  
@@ -64,10 +63,10 @@ SuperAdmins are such addresses that give both "mint" and "standard" authorizatio
   }
 ```
 
-While `authorizedAddresses` are able to call functions like `withdrawEthFee`, `withdrawStablesFee` (PersonalConversion.sol), `withdrawTokenFee` (PersonalTokenConversion.sol), `setPriceInEth`, `setPriceInToken` (StableToken.sol),
+While `authorizedAddresses` are able to call functions like `withdrawEthFee`, `withdrawStablesFee` (PersonalEthConversion.sol), `withdrawTokenFee` (PersonalTokenConversion.sol), `setPriceInEth`, `setPriceInToken` (StableToken.sol),
 `makeAvailable`, `makeUnavailable`, `withdrawFee` (Forex.sol), `setOraclePercent` (Main.sol).
 
-Supplements.sol is the contract that tracks the summ of all collaterals, in order to provide PersonalConversion.sol and PersonalTokenConversion.sol contracts with the amount of excess stable tokens.  
+Supplements.sol is the contract that tracks the summ of all converts, in order to provide PersonalEthConversion.sol and PersonalTokenConversion.sol contracts with the amount of excess stable tokens.  
 ```
   function supplementsInStables(address _stableAddress) constant returns (uint256) { ... }
 ```
@@ -80,7 +79,7 @@ Supplements.sol is the contract that tracks the summ of all collaterals, in orde
 
 # Usage (getting started)
 
-To generate stable tokens one must send ETH to PersonalConversion.sol contract (which activates fallback function):  
+To generate stable tokens one must send ETH to PersonalEthConversion.sol contract (which activates fallback function):  
 ```
   // Fallback function
   function () public payable {
@@ -89,38 +88,38 @@ To generate stable tokens one must send ETH to PersonalConversion.sol contract (
 
   /**
    *  Exchange Eth for stable tokens at current price.
-   *  Sent Eth is stored as collateral, and stable tokens are minted to msg.sender.
+   *  Sent Eth is stored as convert, and stable tokens are minted to msg.sender.
    */
   function buy() public payable isNotPaused {...}
 ```  
-This creates or updates msg.sender's collateral that tracks how much Eth msg.sender has sent. It also remembers the amount of stable tokens that are minted for msg.sender:  
+This creates or updates msg.sender's convert that tracks how much Eth msg.sender has sent. It also remembers the amount of stable tokens that are minted for msg.sender:  
 ```
   /**
-   *  State of specific collateral.
+   *  State of specific convert.
    */
-  struct EthCollateral {
+  struct EthConvert {
     // Amount of stable tokens minted by sending Eth
     uint256 stable;
     // Amount of Eth sent
-    uint256 collateralEth;
+    uint256 convertEth;
   }
 ```
 
-Other way to generate stable tokens is by sending tokens to PersonalTokenConversion.sol contract for specific token. It works the same as PersonalConversion.sol, but with tokens instead of Eth,
+Other way to generate stable tokens is by sending tokens to PersonalTokenConversion.sol contract for specific token. It works the same as PersonalEthConversion.sol, but with tokens instead of Eth,
 hence, there is not fallback function. First, PersonalTokenConversion.sol must have the sender's approval to transfer tokens from him to itself (ERC20 standard), so msg.sender must first interact with
 token contract in order to give approval (by calling `approve` ERC20 function). After that, `buy` function inside PersonalTokenConversion.sol may be called:  
 ```
   /**
    *  Exchange Eth for stable tokens at current price.
-   *  Sent Eth is stored as collateral, and stable tokens are minted to msg.sender.
+   *  Sent Eth is stored as convert, and stable tokens are minted to msg.sender.
    */
   function buy(uint256 _amount) public isNotPaused activatedStable {...}
 ```
 
 
 One may repurchase ETH with stable tokens he generated, at current price (provided by oracle). If the value of stored ETH and other listed tokens is lower than the value of stable tokens initally generated from that
-amount of ETH and tokens, or the total value of collateral ETH and tokens is lower than the value of circulating stable tokens ("global supplements"), one may choose to buy DoES or UpES tokens for non-collateralized
-amount of stable tokens (or for any amount of stable tokens in case of "global supplements") by calling `buyDoES` or `buyUpES` function withing PersonalConversion.sol or PersonalTokenConversion.sol contract:  
+amount of ETH and tokens, or the total value of convert ETH and tokens is lower than the value of circulating stable tokens ("global supplements"), one may choose to buy DoES or UpES tokens for non-convertalized
+amount of stable tokens (or for any amount of stable tokens in case of "global supplements") by calling `buyDoES` or `buyUpES` function withing PersonalEthConversion.sol or PersonalTokenConversion.sol contract:  
 ```
   function buyDoES(uint256 _stablesAmount, address _tokenAddress) public checkForDoES isNotPaused {...}
   function buyUpES(uint256 _stablesAmount, address _tokenAddress) public checkForUpES isNotPaused {...}
@@ -192,7 +191,7 @@ by calling Main.sol's `authorize` function:
   }
 ```
 
-Other than that, superAdmin address must call `setOracleAddress` and `setBuybackContractAddress` functions, so that fee from PersonalConversion.sol could go to both oracle and buyback contract in the future:  
+Other than that, superAdmin address must call `setOracleAddress` and `setBuybackContractAddress` functions, so that fee from PersonalEthConversion.sol could go to both oracle and buyback contract in the future:  
 ```
   function setOracleAddress(address _oracleAddress) public onlySuperAdmin {
     oracleAddress = _oracleAddress;
@@ -203,7 +202,7 @@ Other than that, superAdmin address must call `setOracleAddress` and `setBuyback
   }
 ```
 
-Authorized addresses ("standard" authorization) may call `setOraclePercent` function within Main.sol in order to specify the portion of fee inside PersonalConversion.sol that should go to oracle:  
+Authorized addresses ("standard" authorization) may call `setOraclePercent` function within Main.sol in order to specify the portion of fee inside PersonalEthConversion.sol that should go to oracle:  
 ```
   function setOraclePercent(uint256 _oraclePercent) public onlyAuthorized {
     oraclePercent = _oraclePercent;
@@ -262,9 +261,9 @@ Constructor parameters are:
 2. address[] _stableTokens - the list of addresses of all stable tokens  
 
 
-After Supplements.sol, stable tokens and DoES and UpES tokens are all deployed, PersonalConversion.sol should be deployed for each stable token token (5 deployments in total).  
+After Supplements.sol, stable tokens and DoES and UpES tokens are all deployed, PersonalEthConversion.sol should be deployed for each stable token token (5 deployments in total).  
 Also, PersonalTokenConversion.sol must be deployed 5 times for each listed token (5N deployments).  
-Constructor parameters for PersonalConversion.sol are:  
+Constructor parameters for PersonalEthConversion.sol are:  
 1. _mainContractAddress - address of the Main.sol contract  
 2. address _supplementsContractAddress - Supplements.sol contract address  
 3. address _stableTokenAddress - specific stable token's address  
@@ -274,7 +273,7 @@ Constructor parameters for PersonalConversion.sol are:
    *  Constructor function.
    *  Sets all relevant addresses.
    */
-  function PersonalConversion(
+  function PersonalEthConversion(
     address _mainContractAddress,
     address _supplementsContractAddress,
     address _stableTokenAddress
@@ -296,7 +295,7 @@ Constructor parameters for PersonalTokenConversion.sol are:
    *  Constructor function.
    *  Sets all relevant addresses.
    */
-  function PersonalConversion(
+  function PersonalEthConversion(
     address _mainContractAddress,
     address _supplementsContractAddress,
     address _stableTokenAddress,
@@ -355,17 +354,17 @@ function Discount(
 Constructor parameters for Interest.sol are:  
 1. _mainContractAddress - the address of Main.sol contract  
 2. _stableTokenAddress - the address of specific stable token  
-3. _personalConversionAddress - the address of PersonalConversion.sol contract for specific stable token  
+3. _personalEthConversionAddress - the address of PersonalEthConversion.sol contract for specific stable token  
 
 ```
 function Interest(
   address _mainContractAddress,
   address _stableTokenAddress,
-  address _personalConversionAddress
+  address _personalEthConversionAddress
 ) public {
   mainContractAddress = _mainContractAddress;
   stableTokenAddress = _stableTokenAddress;
-  personalConversionAddress = _personalConversionAddress;
+  personalEthConversionAddress = _personalEthConversionAddress;
 }
 ```
 
@@ -379,11 +378,13 @@ The easiest way to test all functions is to deploy contracts to the testnet usin
 
 
 ### Credits (authors)
-GVISP1 Ltd
-www.gvisp.com
+GVISP1 TEAM
 
 ### Contact
-office@gvisp.com
+GVISP1 Ltd
+web: https://www.gvisp.com
+mail: office@gvisp.com
 
 # License
-This project is licensed under GPL2. The license will be in a separate file called LICENSE.
+This project is licensed under GPL3, https://www.gnu.org/licenses/gpl-3.0.en.html 
+The license should be in a separate file called LICENSE.

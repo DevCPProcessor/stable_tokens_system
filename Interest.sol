@@ -2,7 +2,7 @@ pragma solidity ^0.4.16;
 
 import "./StableToken.sol";
 import "./PersonalEthConversion.sol";
-// import "./PersonalTokenConversion.sol";
+import "./PersonalTokenConversion.sol";
 import "./Main.sol";
 
 contract Interest {
@@ -11,8 +11,8 @@ contract Interest {
   address public mainContractAddress;
   // Specific stable token address
   address public stableTokenAddress;
-  // PersonalConversion.sol contract address for specific stable token
-  address public personalConversionAddress;
+  // PersonalEthConversion.sol contract address for specific stable token
+  address public personalEthConversionAddress;
 
   // Addresses of all PersonalTokenConversion.sol contracts for specific stable token
   address[] public personalTokenConversionAddresses;
@@ -52,17 +52,17 @@ contract Interest {
 
   /**
    *  Constructor function.
-   *  Sets addresses of Main.sol, specific stable token and PersonalConversion.sol
+   *  Sets addresses of Main.sol, specific stable token and PersonalEthConversion.sol
    *  for that specific stable token.
    */
   function Interest(
     address _mainContractAddress,
     address _stableTokenAddress,
-    address _personalConversionAddress
+    address _personalEthConversionAddress
   ) public {
     mainContractAddress = _mainContractAddress;
     stableTokenAddress = _stableTokenAddress;
-    personalConversionAddress = _personalConversionAddress;
+    personalEthConversionAddress = _personalEthConversionAddress;
   }
 
   // Sets addresses of all PersonalTokenConversion.sol contracts for specific stable token
@@ -76,20 +76,20 @@ contract Interest {
    *  is saved.
    */
   function save(uint256 _amount) public {
-    // Reads PersonalConversion.sol and each PersonalTokenConversion.sol contract
+    // Reads PersonalEthConversion.sol and each PersonalTokenConversion.sol contract
     // for specific stable token in order to check the requirements
-    uint256 personalEthValue = PersonalConversion(personalConversionAddress).ethCollateralAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInEth();
+    uint256 personalEthValue = PersonalEthConversion(personalEthConversionAddress).ethConvertAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInEth();
     uint256 personalTokensValue;
-    uint256 stablesCollateralValue = PersonalConversion(personalConversionAddress).stablesCollateralAtAddress(msg.sender);
-    uint256 personalStables = PersonalConversion(personalConversionAddress).stablesAtAddress(msg.sender);
+    uint256 stablesConvertValue = PersonalEthConversion(personalEthConversionAddress).stablesConvertAtAddress(msg.sender);
+    uint256 personalStables = PersonalEthConversion(personalEthConversionAddress).stablesAtAddress(msg.sender);
     for (uint i = 0; i < personalTokenConversionAddresses.length; i++) {
-      personalTokensValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenCollateralsAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInToken(PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenAddress());
-      stablesCollateralValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesCollateralAtAddress(msg.sender);
+      personalTokensValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenConvertsAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInToken(PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenAddress());
+      stablesConvertValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesConvertAtAddress(msg.sender);
       personalStables += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesAtAddress(msg.sender);
     }
 
     // Checks the condition
-    require(2 * personalStables >= (personalEthValue + personalTokensValue + stablesCollateralValue));
+    require(2 * personalStables >= (personalEthValue + personalTokensValue + stablesConvertValue));
     // Burns stable tokens
     require(StableToken(stableTokenAddress).burnFrom(msg.sender, _amount));
 
@@ -106,19 +106,19 @@ contract Interest {
    *  Works by FIFO method (first deposit is transferd first).
    */
   function withdraw(uint256 _amount) public {
-    // Reads from PersonalConversion.sol and each PersonalTokenConversion.sol for requirements
-    uint256 personalEthValue = PersonalConversion(personalConversionAddress).ethCollateralAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInEth();
+    // Reads from PersonalEthConversion.sol and each PersonalTokenConversion.sol for requirements
+    uint256 personalEthValue = PersonalEthConversion(personalEthConversionAddress).ethConvertAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInEth();
     uint256 personalTokensValue;
-    uint256 stablesCollateralValue = PersonalConversion(personalConversionAddress).stablesCollateralAtAddress(msg.sender);
-    uint256 personalStables = PersonalConversion(personalConversionAddress).stablesAtAddress(msg.sender);
+    uint256 stablesConvertValue = PersonalEthConversion(personalEthConversionAddress).stablesConvertAtAddress(msg.sender);
+    uint256 personalStables = PersonalEthConversion(personalEthConversionAddress).stablesAtAddress(msg.sender);
     for (uint i = 0; i < personalTokenConversionAddresses.length; i++) {
-      personalTokensValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenCollateralsAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInToken(PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenAddress());
-      stablesCollateralValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesCollateralAtAddress(msg.sender);
+      personalTokensValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenConvertsAtAddress(msg.sender) / StableToken(stableTokenAddress).currentPriceInToken(PersonalTokenConversion(personalTokenConversionAddresses[i]).tokenAddress());
+      stablesConvertValue += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesConvertAtAddress(msg.sender);
       personalStables += PersonalTokenConversion(personalTokenConversionAddresses[i]).stablesAtAddress(msg.sender);
     }
 
     // Checks the condition
-    require(2 * personalStables <= (personalEthValue + personalTokensValue + stablesCollateralValue));
+    require(2 * personalStables <= (personalEthValue + personalTokensValue + stablesConvertValue));
     require(accounts[msg.sender].totalSavings >= _amount);
 
     // Calculates the interest based on each deposit's timestamp

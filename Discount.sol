@@ -43,19 +43,19 @@ contract Discount {
   function buy(uint256 _amount) public {
     // Reads from Supplements.sol contract for call requirements
     uint256 totalSupply = Supplements(supplementsContractAddress).totalStablesSupplyInStable(stableTokenAddress);
-    uint256 totalEth = Supplements(supplementsContractAddress).totalCollateralEthInStable(stableTokenAddress);
-    uint256 totalTokens = Supplements(supplementsContractAddress).totalCollateralTokensInStable(stableTokenAddress);
-    uint256 totalCollateralStables = Supplements(supplementsContractAddress).totalStableCollateral(stableTokenAddress);
+    uint256 totalEth = Supplements(supplementsContractAddress).totalConvertEthInStable(stableTokenAddress);
+    uint256 totalTokens = Supplements(supplementsContractAddress).totalConvertTokensInStable(stableTokenAddress);
+    uint256 totalConvertStables = Supplements(supplementsContractAddress).totalStableConvert(stableTokenAddress);
 
     // Checks the "mint" condition
-    require(totalSupply >= 45 * (totalEth + totalTokens + totalCollateralStables) / 100);
+    require(totalSupply >= 45 * (totalEth + totalTokens + totalConvertStables) / 100);
     // Burns stable tokens sent
     require(StableToken(stableTokenAddress).burnFrom(msg.sender, _amount));
 
     uint256 toMint = (103 * _amount) / 100;
 
     // Updates Supplements.sol contract
-    Supplements(supplementsContractAddress).increaseTotalStableCollateral(toMint - _amount, stableTokenAddress);
+    Supplements(supplementsContractAddress).increaseTotalStableConvert(toMint - _amount, stableTokenAddress);
     // Mints discount tokens
     StandardToken(didoTokenAddress).mint(toMint, msg.sender);
   }
@@ -68,18 +68,18 @@ contract Discount {
   function sell(uint256 _amount) public {
     // Reads from Supplements.sol contract for call requirements
     uint256 totalSupply = Supplements(supplementsContractAddress).totalStablesSupplyInStable(stableTokenAddress);
-    uint256 totalEth = Supplements(supplementsContractAddress).totalCollateralEthInStable(stableTokenAddress);
-    uint256 totalTokens = Supplements(supplementsContractAddress).totalCollateralTokensInStable(stableTokenAddress);
-    uint256 totalCollateralStables = Supplements(supplementsContractAddress).totalStableCollateral(stableTokenAddress);
+    uint256 totalEth = Supplements(supplementsContractAddress).totalConvertEthInStable(stableTokenAddress);
+    uint256 totalTokens = Supplements(supplementsContractAddress).totalConvertTokensInStable(stableTokenAddress);
+    uint256 totalConvertStables = Supplements(supplementsContractAddress).totalStableConvert(stableTokenAddress);
 
     // Checks the "burn" condition
-    require((totalSupply * 23) / 10 <= (totalEth + totalTokens + totalCollateralStables));
+    require((totalSupply * 23) / 10 <= (totalEth + totalTokens + totalConvertStables));
     // Burns discount tokens sent
     require(StandardToken(didoTokenAddress).burnFrom(msg.sender, _amount));
 
     // Updates Supplements.sol contract
     uint256 toReduce = (3 * _amount) / 103;
-    Supplements(supplementsContractAddress).decreaseTotalStableCollateral(toReduce, stableTokenAddress);
+    Supplements(supplementsContractAddress).decreaseTotalStableConvert(toReduce, stableTokenAddress);
     // Mints stable tokens
     StableToken(stableTokenAddress).mint(_amount, msg.sender);
   }

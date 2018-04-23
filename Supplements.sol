@@ -8,15 +8,15 @@ contract Supplements {
   // Main contract address
   address public mainContractAddress;
 
-  // Total amount of eth stored as collateral
+  // Total amount of eth stored as convert
   uint256 public totalConvertEth;
-  // Total amount of specific tokens stored as collateral
+  // Total amount of specific tokens stored as convert
   mapping (address => uint256) public totalConvertTokens;
   // Mapps token address to "true" if token is listed, to "false" otherwise
   mapping (address => bool) public listed;
 
-  // Total amount of stable tokens stored as collateral
-  mapping (address => uint256) public totalConvertCollateral;
+  // Total amount of stable tokens stored as convert
+  mapping (address => uint256) public totalStableConvert;
 
   // Addresses of stable tokens
   address[] public stableTokens;
@@ -50,37 +50,37 @@ contract Supplements {
     stableTokens = _stableTokens;
   }
 
-  // Increases total amount of collateral eth
+  // Increases total amount of convert eth
   function increaseTotalConvertEth(uint256 _amount) public onlyMintAuthorized {
     totalConvertEth += _amount;
   }
 
-  // Decreases total amount of collateral eth
+  // Decreases total amount of convert eth
   function decreseTotalConvertEth(uint256 _amount) public onlyMintAuthorized {
     require(totalConvertEth >= _amount);
     totalConvertEth -= _amount;
   }
 
-  // Increases total amount of specific tokens stored as collateral
+  // Increases total amount of specific tokens stored as convert
   function increaseTotalConvertTokens(uint256 _amount, address _tokenAddress) public onlyMintAuthorized {
     totalConvertTokens[_tokenAddress] += _amount;
   }
 
-  // Decreases total amount of specific tokens stored as collateral
+  // Decreases total amount of specific tokens stored as convert
   function decreseTotalConvertTokens(uint256 _amount, address _tokenAddress) public onlyMintAuthorized {
     require(totalConvertTokens[_tokenAddress] >= _amount);
     totalConvertTokens[_tokenAddress] -= _amount;
   }
 
-  // Increases total amount of collateral stables
-  function increaseTotalConvertCollateral(uint256 _amount, address _stableAddress) public onlyMintAuthorized {
-    totalConvertCollateral[_stableAddress] += _amount;
+  // Increases total amount of convert stables
+  function increaseTotalStableConvert(uint256 _amount, address _stableAddress) public onlyMintAuthorized {
+    totalStableConvert[_stableAddress] += _amount;
   }
 
-  // Decreases total amount of collateral stables
-  function decreseTotalConvertCollateral(uint256 _amount, address _stableAddress) public onlyMintAuthorized {
-    require(totalConvertCollateral[_stableAddress] >= _amount);
-    totalConvertCollateral[_stableAddress] -= _amount;
+  // Decreases total amount of convert stables
+  function decreseTotalStableConvert(uint256 _amount, address _stableAddress) public onlyMintAuthorized {
+    require(totalStableConvert[_stableAddress] >= _amount);
+    totalStableConvert[_stableAddress] -= _amount;
   }
 
   // Sets listed tokens
@@ -90,28 +90,28 @@ contract Supplements {
 
   // Calculates global supplements and returns it in terms of stable tokens related to specified address
   function supplementsInStables(address _stableAddress) constant returns (uint256) {
-    uint256 totalCollateralValueInStables;
+    uint256 totalConvertValueInStables;
     for (uint i = 0; i < listedTokens.length; i++) {
       uint256 price = StableToken(_stableAddress).currentPriceInToken(listedTokens[i]);
       require(price > 0);
-      totalCollateralValueInStables += totalConvertTokens[listedTokens[i]] / price;
+      totalConvertValueInStables += totalConvertTokens[listedTokens[i]] / price;
     }
-    totalCollateralValueInStables += totalConvertEth / StableToken(_stableAddress).currentPriceInEth();
+    totalConvertValueInStables += totalConvertEth / StableToken(_stableAddress).currentPriceInEth();
 
     uint256 stablePriceInEth = StableToken(_stableAddress).currentPriceInEth();
-    uint256 stablesCollateralValueInStables;
+    uint256 stablesConvertValueInStables;
     uint256 totalSupplyValue;
 
     for (i = 0; i < stableTokens.length; i++) {
-      stablesCollateralValueInStables += (totalConvertCollateral[stableTokens[i]] * StableToken(stableTokens[i]).currentPriceInEth()) / StableToken(_stableAddress).currentPriceInEth();
+      stablesConvertValueInStables += (totalStablesConvert[stableTokens[i]] * StableToken(stableTokens[i]).currentPriceInEth()) / StableToken(_stableAddress).currentPriceInEth();
       totalSupplyValue += (StableToken(stableTokens[i]).totalSupply() * StableToken(stableTokens[i]).currentPriceInEth()) / StableToken(_stableAddress).currentPriceInEth();
     }
 
-    if (totalSupplyValue - stablesCollateralValueInStables <= totalCollateralValueInStables) {
+    if (totalSupplyValue - stablesConvertValueInStables <= totalConvertValueInStables) {
       return 0;
     }
     else {
-      return (totalSupplyValue - stablesCollateralValueInStables - totalCollateralValueInStables);
+      return (totalSupplyValue - stablesConvertValueInStables - totalConvertValueInStables);
     }
   }
 
